@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "{{ .Values.statefulSetName }}"
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Values.statefulSetApp }}"
+  serviceName: "{{ .Values.serviceName }}"
+  replicas: {{ .Values.replicaCount }}
+  updateStrategy:
+    type: "{{ .Values.updateStrategy }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.statefulSetApp }}"
+    spec:
+      containers:
+      - image: "{{ .Values.example.image.repository }}:{{ .Values.example.image.tag | default .Chart.AppVersion }}"
+        name: "{{ .Values.example.container.name }}"
+        volumeMounts:
+        - mountPath: /var/www
+          name: "{{ .Values.example.pv }}"
+        resources:
+          limits:
+            cpu: "{{ .Values.resources.limits.cpu }}"
+            memory: "{{ .Values.resources.limits.memory }}"
+          requests:
+            cpu: "{{ .Values.resources.requests.cpu }}"
+            memory: "{{ .Values.resources.requests.memory }}"
+        command: ["/bin/bash"]
+        args: [ "-c", "while true; do echo {{ .Values.example.commandStart }} $(date) {{ .Values.example.commandEnd }} >> /var/www/file; sleep 10; done" ]
+      volumes:
+        - name: "{{ .Values.example.pv }}"
+          persistentVolumeClaim:
+            claimName: "{{ .Values.example.pvc.name }}"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ .Values.example.pvc.name }}"
+  namespace: "{{ .Values.namespace }}"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: "{{ .Values.example.pvc.size }}"
+  storageClassName: "{{ .Values.storageClassName }}"
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: "{{ .Values.storageClassName }}"
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-standard
+  fstype: ext4
+  replication-type: none
